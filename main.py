@@ -10,7 +10,7 @@ from datetime import date
 # ==========================================================
 st.set_page_config(page_title="Buzdolabı Gurmesi", page_icon="🥗", layout="wide")
 
-# API Anahtarı Kontrolü (Secrets'tan alır)
+# API Anahtarı Kontrolü
 if "api_key" in st.secrets:
     genai.configure(api_key=st.secrets["api_key"])
 else:
@@ -24,7 +24,7 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 # ==========================================================
 DOSYA_ADI = "kalori_takibi.json"
 
-# Çok Dilli Yemek Listesi (Autocomplete İçin)
+# Yemek Sözlüğü
 YEMEK_SOZLUGU = {
     "Türkçe": ["Adana Kebap", "Ayran", "Baklava", "Balık", "Döner", "Elma", "Fasulye", "Hamburger", "İskender", "Kahve", "Köfte", "Lahmacun", "Makarna", "Menemen", "Muz", "Omlet", "Pilav", "Pizza", "Salata", "Simit", "Tavuk", "Tost", "Yumurta", "Zeytin"],
     "English": ["Apple", "Banana", "Burger", "Chicken", "Coffee", "Donut", "Egg", "Fish", "Fries", "Hot Dog", "Omelette", "Pasta", "Pizza", "Rice", "Salad", "Sandwich", "Steak", "Sushi", "Toast", "Yogurt"],
@@ -43,7 +43,7 @@ def veriyi_kaydet(data):
     with open(DOSYA_ADI, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# Uygulama Makyajı (Streamlit yazılarını gizle)
+# Makyaj (Streamlit yazılarını gizle)
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -61,16 +61,13 @@ st.sidebar.title("🌐 Dil / Language")
 secilen_dil = st.sidebar.selectbox("Seç / Select", ["Türkçe", "English", "Deutsch", "Français", "العربية"])
 st.sidebar.divider()
 
-# DİL AYARLARI (TÜM METİNLER)
+# Dil Ayarları
 if secilen_dil == "English":
     menu_title = "📱 Menu"
     nav_options = ["👤 Profile & Goals", "📸 Fridge Chef", "📊 Calorie Tracker"]
-    # Profil Metinleri
     prof_txt = {"title": "👤 Profile & Goal Settings", "gender": "Gender", "male": "Male", "female": "Female", "age": "Age", "height": "Height (cm)", "weight": "Weight (kg)", "target": "Target Weight (kg)", "act": "Activity Level", "calc": "Calculate Plan 🚀", "res_cal": "Target Calories", "res_prot": "Target Protein", "advice": "💡 AI Coach Advice"}
     act_lvls = ["Sedentary", "Lightly Active", "Moderately Active", "Very Active"]
-    # Şef Metinleri
     chef_txt = {"goals": ["👨‍🍳 Standard", "🥗 Dietitian", "💪 Athlete"], "upload": "Upload Image", "btn": "Analyze! 🚀", "res": "✅ Result:"}
-    # Takip Metinleri
     track_txt = {"title": "📊 Daily Tracker", "add": "➕ Add Meal", "meal": "Meal", "food": "Food Name", "portion": "Portion", "calc_ai": "✨ Calculate with AI", "save": "Add to List 💾", "sum": "📅 Summary", "reset": "🗑️ Reset Day"}
     meals = ["Breakfast", "Lunch", "Dinner", "Snack"]
 
@@ -114,7 +111,7 @@ st.sidebar.title(menu_title)
 secilen_sayfa = st.sidebar.radio("", nav_options)
 
 # ==========================================================
-# SAYFA 1: PROFİL & HEDEF (KİŞİSEL PLAN)
+# SAYFA 1: PROFİL & HEDEF
 # ==========================================================
 if secilen_sayfa == nav_options[0]:
     st.title(prof_txt["title"])
@@ -125,24 +122,23 @@ if secilen_sayfa == nav_options[0]:
         yas = st.number_input(prof_txt["age"], 10, 100, 25)
         boy = st.number_input(prof_txt["height"], 100, 250, 175)
     with col2:
-        kilo = st.number_input(prof_txt["weight"], 30.0, 200.0, 70.0)
-        hedef_kilo = st.number_input(prof_txt["target"], 30.0, 200.0, 70.0)
+        # BURADA DÜZELTME YAPTIK: step=0.1
+        kilo = st.number_input(prof_txt["weight"], 30.0, 200.0, 70.0, step=0.1)
+        hedef_kilo = st.number_input(prof_txt["target"], 30.0, 200.0, 70.0, step=0.1)
         aktivite = st.selectbox(prof_txt["act"], act_lvls)
 
     if st.button(prof_txt["calc"], type="primary"):
-        # Matematiksel Hesaplama (Mifflin-St Jeor)
         bmr = (10 * kilo) + (6.25 * boy) - (5 * yas) + (5 if cinsiyet == prof_txt["male"] else -161)
         katsayi = [1.2, 1.375, 1.55, 1.725][act_lvls.index(aktivite)]
         tdee = bmr * katsayi
         
-        # Hedef Belirleme
-        if hedef_kilo < kilo: # Zayıflama
+        if hedef_kilo < kilo:
             hedef_kalori = tdee - 500
             prot_factor = 1.8
-        elif hedef_kilo > kilo: # Kilo Alma
+        elif hedef_kilo > kilo:
             hedef_kalori = tdee + 400
             prot_factor = 2.0
-        else: # Koruma
+        else:
             hedef_kalori = tdee
             prot_factor = 1.4
             
@@ -153,7 +149,6 @@ if secilen_sayfa == nav_options[0]:
         c1.metric(prof_txt["res_cal"], f"{int(hedef_kalori)} kcal")
         c2.metric(prof_txt["res_prot"], f"{int(hedef_protein)} gr")
         
-        # Yapay Zeka Tavsiyesi
         st.subheader(prof_txt["advice"])
         with st.spinner("..."):
             prompt = f"User: {yas} years, {kilo}kg, {boy}cm. Goal: {kilo}->{hedef_kilo}kg. Calculated Calorie Target: {int(hedef_kalori)}. Give motivation and diet roadmap in {secilen_dil}."
@@ -163,15 +158,13 @@ if secilen_sayfa == nav_options[0]:
             except: st.error("AI Error")
 
 # ==========================================================
-# SAYFA 2: BUZDOLABI ŞEFİ (TARİF & ANALİZ)
+# SAYFA 2: BUZDOLABI ŞEFİ
 # ==========================================================
 elif secilen_sayfa == nav_options[1]:
     st.title(nav_options[1])
     
-    # Hedef Modu Seçimi
     sef_modu = st.sidebar.radio("Mode", chef_txt["goals"])
     
-    # Resim Yükleme
     yuklenen_resim = st.file_uploader(chef_txt["upload"], type=["jpg", "jpeg", "png"])
     
     if yuklenen_resim is not None:
@@ -189,7 +182,7 @@ elif secilen_sayfa == nav_options[1]:
                     st.error(f"Error: {e}")
 
 # ==========================================================
-# SAYFA 3: KALORİ TAKİBİ (AKILLI HESAPLAMA)
+# SAYFA 3: KALORİ TAKİBİ
 # ==========================================================
 elif secilen_sayfa == nav_options[2]:
     st.title(track_txt["title"])
@@ -201,7 +194,6 @@ elif secilen_sayfa == nav_options[2]:
     
     st.subheader(track_txt["add"])
     
-    # Session State (Hafıza)
     if 'cal' not in st.session_state: st.session_state['cal'] = 0
     if 'pro' not in st.session_state: st.session_state['pro'] = 0
     if 'carb' not in st.session_state: st.session_state['carb'] = 0
@@ -213,7 +205,6 @@ elif secilen_sayfa == nav_options[2]:
         ogun = st.selectbox(track_txt["meal"], meals)
         ogun_id = str(meals.index(ogun) + 1)
         
-        # Dile göre yemek listesi
         aktif_liste = YEMEK_SOZLUGU.get(secilen_dil, YEMEK_SOZLUGU["Türkçe"])
         yemek = st.selectbox(track_txt["food"], aktif_liste)
         miktar = st.number_input(track_txt["portion"], 0.5, 10.0, 1.0, 0.5)
