@@ -54,34 +54,26 @@ def log_kaydet(islem, detay):
     with open(LOG_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(logs, f, ensure_ascii=False, indent=4)
 
-# --- KESİN ÇÖZÜM MAKYAJI ---
+# --- CSS DÜZELTMESİ (MENÜYÜ KURTARDIK) ---
 hide_streamlit_style = """
 <style>
-    /* 1. Footer'ı tamamen yok et */
-    footer {visibility: hidden !important; display: none !important;}
+    /* 1. Footer'ı (Alttaki yazıları) Gizle */
+    footer {visibility: hidden;}
     
-    /* 2. Sağ Üstteki "Deploy" ve Seçenekler Menüsünü (Toolbar) yok et */
-    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
-    
-    /* 3. Sağ Alttaki Kırmızı "Manage App" Butonunu yok et */
+    /* 2. Sadece 'Deploy' butonunu gizle (Menüye dokunma) */
     .stDeployButton {display:none !important;}
     
-    /* 4. Sağ Alttaki Durum Widget'ını yok et */
-    [data-testid="stStatusWidget"] {display:none !important;}
+    /* 3. Sağ Alttaki Kırmızı/Gri 'Manage App' butonunu gizle */
+    [data-testid="stStatusWidget"] {visibility: hidden;}
     
-    /* 5. Üstteki renkli çizgiyi yok et */
-    [data-testid="stDecoration"] {display:none !important;}
+    /* 4. Üstteki Renkli Çizgiyi Gizle */
+    [data-testid="stDecoration"] {display:none;}
+
+    /* 5. İNATÇI BUTONLAR İÇİN EKSTRA KOD */
+    div[class*="viewerBadge"] {display: none !important;}
     
-    /* 6. Mobilde üst boşluğu azalt (Menü butonu kalsın diye header'ı gizlemiyoruz) */
-    .block-container {
-        padding-top: 2rem;
-    }
-    
-    /* 7. Eğer hala inatçı buton varsa, iframe içindeki butonları hedefle (Genel Temizlik) */
-    button[kind="header"] {display: none !important;}
-    
-    /* NOT: Sol üstteki menü butonu (Hamburger) [data-testid="collapsedControl"] içindedir.
-       Ona dokunmuyoruz, o yüzden görünür kalacak. */
+    /* NOT: 'stToolbar'ı gizleyen kodu SİLDİM. 
+       Böylece sol üstteki Hamburger Menüsü geri gelecek. */
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
