@@ -8,7 +8,6 @@ from datetime import datetime
 # ==========================================================
 # 1. AYARLAR VE GÜVENLİK
 # ==========================================================
-# İSİM GÜNCELLENDİ: Gurme Chef AI
 st.set_page_config(page_title="Gurme Chef AI", page_icon="👨‍🍳", layout="wide")
 
 if "api_key" in st.secrets:
@@ -25,7 +24,6 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 LOG_DOSYASI = "system_logs.json"
 DOSYA_ADI = "user_data.json"
 
-# YEMEK LİSTESİ (GLOBAL)
 YEMEK_SOZLUGU = {
     "Türkçe": ["Adana Kebap", "Ayran", "Baklava", "Balık", "Döner", "Elma", "Fasulye", "Hamburger", "İskender", "Kahve", "Köfte", "Lahmacun", "Makarna", "Menemen", "Muz", "Omlet", "Pilav", "Pizza", "Salata", "Simit", "Tavuk", "Tost", "Yumurta", "Zeytin"],
     "English": ["Apple", "Banana", "Burger", "Chicken", "Coffee", "Donut", "Egg", "Fish", "Fries", "Hot Dog", "Omelette", "Pasta", "Pizza", "Rice", "Salad", "Sandwich", "Steak", "Sushi", "Toast", "Yogurt"],
@@ -56,13 +54,25 @@ def log_kaydet(islem, detay):
     with open(LOG_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(logs, f, ensure_ascii=False, indent=4)
 
-# Makyaj (Temiz Görünüm)
+# --- DÜZELTİLEN MAKYAJ KODU (CSS) ---
 hide_streamlit_style = """
             <style>
+            /* 1. Üst Menü Butonunu (Hamburger) Geri Getir */
+            /* header {visibility: hidden;}  <-- BUNU SİLDİK Kİ MENÜ GÖRÜNSÜN */
+            
+            /* 2. Gereksiz "Manage" ve "Deploy" butonlarını yok et (Sağ Alttakiler) */
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
-            header {visibility: hidden;}
-            .stApp { margin-top: -80px; }
+            .stDeployButton {display:none;}
+            [data-testid="stToolbar"] {visibility: hidden !important;}
+            [data-testid="stDecoration"] {display:none;}
+            [data-testid="stStatusWidget"] {display:none;}
+            
+            /* 3. Sayfa içeriğini düzgün hizala */
+            .block-container {
+                padding-top: 3rem;
+                padding-bottom: 5rem;
+            }
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -74,14 +84,13 @@ st.sidebar.title("🌐 Language")
 secilen_dil = st.sidebar.selectbox("Select", ["English", "Türkçe", "Deutsch", "Français", "العربية"])
 st.sidebar.divider()
 
-# GİZLİ ADMİN GİRİŞİ (?patron=1)
 if "patron" in st.query_params:
     with st.sidebar.expander("🔒 Admin Login"):
         if st.text_input("Password", type="password") == st.secrets.get("admin_password", ""):
             st.session_state['is_admin'] = True
             st.sidebar.success("Access Granted!")
 
-# --- DİL AYARLARI (GURME CHEF GÜNCELLEMESİ) ---
+# DİL AYARLARI
 if secilen_dil == "English":
     menu_t = "📱 Menu"
     nav = ["👤 My Profile", "👨‍🍳 Gurme Chef AI", "📊 NutriTracker"]
@@ -161,7 +170,7 @@ if page == nav[0]:
             except: pass
 
 # ==========================================================
-# SAYFA 2: GURME CHEF (ANA KAMERA)
+# SAYFA 2: GURME CHEF
 # ==========================================================
 elif page == nav[1]:
     st.title(nav[1])
