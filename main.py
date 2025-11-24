@@ -54,27 +54,31 @@ def log_kaydet(islem, detay):
     with open(LOG_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(logs, f, ensure_ascii=False, indent=4)
 
-# --- DÜZELTİLEN MAKYAJ KODU (CSS) ---
+# --- CSS MAKYAJI (DÜZELTİLMİŞ VERSİYON) ---
 hide_streamlit_style = """
-            <style>
-            /* 1. Üst Menü Butonunu (Hamburger) Geri Getir */
-            /* header {visibility: hidden;}  <-- BUNU SİLDİK Kİ MENÜ GÖRÜNSÜN */
-            
-            /* 2. Gereksiz "Manage" ve "Deploy" butonlarını yok et (Sağ Alttakiler) */
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            .stDeployButton {display:none;}
-            [data-testid="stToolbar"] {visibility: hidden !important;}
-            [data-testid="stDecoration"] {display:none;}
-            [data-testid="stStatusWidget"] {display:none;}
-            
-            /* 3. Sayfa içeriğini düzgün hizala */
-            .block-container {
-                padding-top: 3rem;
-                padding-bottom: 5rem;
-            }
-            </style>
-            """
+<style>
+    /* 1. Footer'ı Gizle (Made with Streamlit yazısı) */
+    footer {visibility: hidden;}
+    
+    /* 2. Sağ üstteki 'Deploy' butonunu Gizle */
+    .stDeployButton {display:none;}
+    
+    /* 3. Sağ alttaki kırmızı/gri 'Status' butonlarını Gizle (Göze batanlar) */
+    [data-testid="stStatusWidget"] {display:none;}
+    
+    /* 4. Üstteki Gökkuşağı çizgisini Gizle */
+    [data-testid="stDecoration"] {display:none;}
+
+    /* 5. DİKKAT: Header'ı (Üst Şeridi) GİZLEMİYORUZ! */
+    /* Header gizlenirse menü butonu da gider. O yüzden o satırı sildik. */
+    /* Menü butonunun rahat çalışması için header görünür kalmalı. */
+
+    /* Mobilde üst boşluğu biraz azaltalım */
+    .block-container {
+        padding-top: 2rem;
+    }
+</style>
+"""
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # ==========================================================
