@@ -19,27 +19,12 @@ else:
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # ==========================================================
-# 2. LOGLAMA SİSTEMİ (CASUSLUK)
+# 2. LOGLAMA VE VERİ
 # ==========================================================
 LOG_DOSYASI = "sistem_loglari.json"
-
-def log_kaydet(islem, detay):
-    zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    yeni_kayit = {"zaman": zaman, "islem": islem, "detay": detay}
-    kayitlar = []
-    if os.path.exists(LOG_DOSYASI):
-        try:
-            with open(LOG_DOSYASI, "r", encoding="utf-8") as f:
-                kayitlar = json.load(f)
-        except: pass
-    kayitlar.append(yeni_kayit)
-    with open(LOG_DOSYASI, "w", encoding="utf-8") as f:
-        json.dump(kayitlar, f, ensure_ascii=False, indent=4)
-
-# ==========================================================
-# 3. VERİ FONKSİYONLARI
-# ==========================================================
 DOSYA_ADI = "kalori_takibi.json"
+
+# YEMEK LİSTESİ
 YEMEK_SOZLUGU = {
     "Türkçe": ["Adana Kebap", "Ayran", "Baklava", "Balık", "Döner", "Elma", "Fasulye", "Hamburger", "İskender", "Kahve", "Köfte", "Lahmacun", "Makarna", "Menemen", "Muz", "Omlet", "Pilav", "Pizza", "Salata", "Simit", "Tavuk", "Tost", "Yumurta", "Zeytin"],
     "English": ["Apple", "Banana", "Burger", "Chicken", "Coffee", "Donut", "Egg", "Fish", "Fries", "Hot Dog", "Omelette", "Pasta", "Pizza", "Rice", "Salad", "Sandwich", "Steak", "Sushi", "Toast", "Yogurt"],
@@ -58,6 +43,19 @@ def veriyi_kaydet(data):
     with open(DOSYA_ADI, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+def log_kaydet(islem, detay):
+    zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    yeni = {"zaman": zaman, "islem": islem, "detay": detay}
+    logs = []
+    if os.path.exists(LOG_DOSYASI):
+        try:
+            with open(LOG_DOSYASI, "r", encoding="utf-8") as f: logs = json.load(f)
+        except: pass
+    logs.append(yeni)
+    with open(LOG_DOSYASI, "w", encoding="utf-8") as f:
+        json.dump(logs, f, ensure_ascii=False, indent=4)
+
+# Makyaj
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -69,145 +67,141 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # ==========================================================
-# 4. YAN MENÜ
+# 3. DİL VE MENÜ AYARLARI
 # ==========================================================
 st.sidebar.title("🌐 Dil / Language")
 secilen_dil = st.sidebar.selectbox("Seç / Select", ["Türkçe", "English", "Deutsch", "Français", "العربية"])
 st.sidebar.divider()
 
-# --- GİZLİ KAPI MANTIĞI ---
-# Sadece linkin sonunda ?patron=1 varsa kutuyu gösterir
-query_params = st.query_params
-is_admin = False
+# Gizli Admin Girişi (?patron=1)
+if "patron" in st.query_params:
+    with st.sidebar.expander("🔒 Admin"):
+        if st.text_input("Pass", type="password") == st.secrets.get("admin_password", ""):
+            st.session_state['is_admin'] = True
+            st.sidebar.success("OK!")
 
-if "patron" in query_params:
-    with st.sidebar.expander("🔒 Yönetici Girişi"):
-        admin_pass = st.text_input("Şifre", type="password")
-        if "admin_password" in st.secrets:
-            if admin_pass == st.secrets["admin_password"]:
-                is_admin = True
-                st.sidebar.success("Giriş Başarılı!")
-
-# METİNLER
+# --- DİL SÖZLÜĞÜ (BURASI DÜZELTİLDİ) ---
 if secilen_dil == "English":
-    menu_title, nav_options = "📱 Menu", ["👤 Profile & Goals", "📸 Fridge Chef", "📊 Calorie Tracker"]
-    prof_txt = {"title": "👤 Profile", "calc": "Calculate 🚀", "advice": "💡 AI Advice"}
-    chef_txt = {"goals": ["👨‍🍳 Standard", "🥗 Dietitian", "💪 Athlete"], "upload": "Upload", "btn": "Analyze! 🚀"}
-    track_txt = {"title": "📊 Tracker", "add": "➕ Add Meal", "meal": "Meal", "food": "Food", "portion": "Portion", "calc_ai": "✨ AI Calc", "save": "Save 💾"}
+    menu_t = "📱 Menu"
+    nav = ["👤 Profile", "📸 Chef", "📊 Tracker"]
+    prof = {"ti": "👤 Profile", "gen": "Gender", "m": "Male", "f": "Female", "age": "Age", "h": "Height (cm)", "w": "Weight (kg)", "tar": "Target (kg)", "act": "Activity", "btn": "Calculate 🚀", "adv": "💡 AI Advice"}
+    chef = {"goals": ["👨‍🍳 Standard", "🥗 Dietitian", "💪 Athlete"], "up": "Upload", "btn": "Analyze! 🚀", "res": "✅ Result:"}
+    track = {"ti": "📊 Tracker", "add": "➕ Add", "meal": "Meal", "food": "Food", "por": "Portion", "ai": "✨ AI Calc", "save": "Save 💾", "sum": "Summary"}
     meals = ["Breakfast", "Lunch", "Dinner", "Snack"]
-    act_lvls = ["Sedentary", "Lightly Active", "Moderately Active", "Very Active"]
-    txt_gender, txt_age, txt_weight, txt_height, txt_target = "Gender", "Age", "Weight", "Height", "Target"
-    
+    acts = ["Sedentary", "Lightly Active", "Moderately Active", "Very Active"]
+
 elif secilen_dil == "Deutsch":
-    menu_title, nav_options = "📱 Menü", ["👤 Profil & Ziele", "📸 Kühlschrank-Chef", "📊 Kalorien-Tracker"]
-    prof_txt = {"title": "👤 Profil", "calc": "Berechnen 🚀", "advice": "💡 KI-Rat"}
-    chef_txt = {"goals": ["👨‍🍳 Standard", "🥗 Ernährungsberater", "💪 Sportler"], "upload": "Bild hochladen", "btn": "Analysieren! 🚀"}
-    track_txt = {"title": "📊 Tracker", "add": "➕ Mahlzeit", "meal": "Mahlzeit", "food": "Essen", "portion": "Portion", "calc_ai": "✨ KI-Berechnung", "save": "Speichern 💾"}
+    menu_t = "📱 Menü"
+    nav = ["👤 Profil", "📸 Chef", "📊 Tracker"]
+    prof = {"ti": "👤 Profil", "gen": "Geschlecht", "m": "Männlich", "f": "Weiblich", "age": "Alter", "h": "Größe (cm)", "w": "Gewicht (kg)", "tar": "Ziel (kg)", "act": "Aktivität", "btn": "Berechnen 🚀", "adv": "💡 KI-Rat"}
+    chef = {"goals": ["👨‍🍳 Standard", "🥗 Ernährungsberater", "💪 Sportler"], "up": "Bild hochladen", "btn": "Analysieren! 🚀", "res": "✅ Ergebnis:"}
+    track = {"ti": "📊 Tracker", "add": "➕ Mahlzeit", "meal": "Mahlzeit", "food": "Essen", "por": "Portion", "ai": "✨ KI-Calc", "save": "Speichern 💾", "sum": "Zusammenfassung"}
     meals = ["Frühstück", "Mittagessen", "Abendessen", "Snack"]
-    act_lvls = ["Sitzend", "Leicht aktiv", "Mäßig aktiv", "Sehr aktiv"]
-    txt_gender, txt_age, txt_weight, txt_height, txt_target = "Geschlecht", "Alter", "Gewicht", "Größe", "Ziel"
+    acts = ["Sitzend", "Leicht aktiv", "Mäßig aktiv", "Sehr aktiv"]
+
+elif secilen_dil == "Français":
+    menu_t = "📱 Menu"
+    nav = ["👤 Profil", "📸 Chef", "📊 Suivi"]
+    prof = {"ti": "👤 Profil", "gen": "Genre", "m": "Homme", "f": "Femme", "age": "Âge", "h": "Taille", "w": "Poids", "tar": "Objectif", "act": "Activité", "btn": "Calculer 🚀", "adv": "💡 Conseil IA"}
+    chef = {"goals": ["👨‍🍳 Standard", "🥗 Diététicien", "💪 Athlète"], "up": "Image", "btn": "Analyser! 🚀", "res": "✅ Résultat:"}
+    track = {"ti": "📊 Suivi", "add": "➕ Ajouter", "meal": "Repas", "food": "Aliment", "por": "Portion", "ai": "✨ Calcul IA", "save": "Ajouter 💾", "sum": "Résumé"}
+    meals = ["Petit-déj", "Déjeuner", "Dîner", "Collation"]
+    acts = ["Sédentaire", "Légèrement actif", "Modérément actif", "Très actif"]
+
+elif secilen_dil == "العربية":
+    menu_t = "📱 القائمة"
+    nav = ["👤 الملف الشخصي", "📸 شيف الثلاجة", "📊 التتبع"]
+    prof = {"ti": "👤 الملف الشخصي", "gen": "الجنس", "m": "ذكر", "f": "أنثى", "age": "العمر", "h": "الطول", "w": "الوزن", "tar": "الهدف", "act": "النشاط", "btn": "احسب 🚀", "adv": "💡 نصيحة"}
+    chef = {"goals": ["👨‍🍳 قياسي", "🥗 صحي", "💪 رياضي"], "up": "صورة", "btn": "تحليل! 🚀", "res": "✅ النتيجة:"}
+    track = {"ti": "📊 التتبع", "add": "➕ إضافة", "meal": "وجبة", "food": "طعام", "por": "الكمية", "ai": "✨ حساب ذكي", "save": "حفظ 💾", "sum": "ملخص"}
+    meals = ["إفطار", "غداء", "عشاء", "وجبة خفيفة"]
+    acts = ["خامل", "نشط قليلاً", "نشط متوسط", "نشط جداً"]
 
 else: # Türkçe
-    menu_title, nav_options = "📱 Menü", ["👤 Profil & Hedef", "📸 Buzdolabı Şefi", "📊 Kalori & Diyet Takibi"]
-    prof_txt = {"title": "👤 Profil & Hedef", "calc": "Hesapla & Planla 🚀", "advice": "💡 Yapay Zeka Tavsiyesi"}
-    chef_txt = {"goals": ["👨‍🍳 Standart", "🥗 Diyetisyen", "💪 Sporcu"], "upload": "Resim Yükle", "btn": "Analiz Et! 🚀"}
-    track_txt = {"title": "📊 Günlük Takip", "add": "➕ Ne Yedin?", "meal": "Öğün Seç", "food": "Yemek Seç", "portion": "Porsiyon", "calc_ai": "✨ AI ile Hesapla", "save": "Listeye Ekle 💾"}
+    menu_t = "📱 Menü"
+    nav = ["👤 Profil & Hedef", "📸 Buzdolabı Şefi", "📊 Kalori Takibi"]
+    prof = {"ti": "👤 Profil & Hedef", "gen": "Cinsiyet", "m": "Erkek", "f": "Kadın", "age": "Yaş", "h": "Boy (cm)", "w": "Kilo (kg)", "tar": "Hedef (kg)", "act": "Hareket", "btn": "Hesapla 🚀", "adv": "💡 AI Tavsiyesi"}
+    chef = {"goals": ["👨‍🍳 Standart", "🥗 Diyetisyen", "💪 Sporcu"], "up": "Resim Yükle", "btn": "Analiz Et! 🚀", "res": "✅ Sonuç:"}
+    track = {"ti": "📊 Günlük Takip", "add": "➕ Ne Yedin?", "meal": "Öğün", "food": "Yemek", "por": "Porsiyon", "ai": "✨ AI ile Hesapla", "save": "Ekle 💾", "sum": "Gün Özeti"}
     meals = ["Sabah", "Öğle", "Akşam", "Ara Öğün"]
-    act_lvls = ["Hareketsiz", "Az Hareketli", "Orta Hareketli", "Çok Hareketli"]
-    txt_gender, txt_age, txt_weight, txt_height, txt_target = "Cinsiyet", "Yaş", "Kilo", "Boy", "Hedef"
+    acts = ["Hareketsiz", "Az Hareketli", "Orta Hareketli", "Çok Hareketli"]
 
-if is_admin:
-    nav_options.append("🕵️‍♂️ ADMİN PANELİ")
+if st.session_state.get('is_admin'): nav.append("🕵️‍♂️ ADMİN")
 
-st.sidebar.title(menu_title)
-secilen_sayfa = st.sidebar.radio("", nav_options)
+st.sidebar.title(menu_t)
+page = st.sidebar.radio("", nav)
 
 # ==========================================================
-# SAYFA 4: ADMİN PANELİ (GİZLİ)
+# SAYFA 1: PROFİL (Cinsiyet Düzeltildi)
 # ==========================================================
-if is_admin and secilen_sayfa == "🕵️‍♂️ ADMİN PANELİ":
-    st.title("🕵️‍♂️ Patron Paneli")
-    if os.path.exists(LOG_DOSYASI):
-        with open(LOG_DOSYASI, "r", encoding="utf-8") as f: loglar = json.load(f)
-        st.dataframe(loglar[::-1], use_container_width=True)
-        st.metric("Toplam Hareket", len(loglar))
-        if st.button("Logları Sil"):
-            os.remove(LOG_DOSYASI)
-            st.rerun()
-    else: st.info("Hareket yok.")
-
-# ==========================================================
-# SAYFA 1: PROFİL
-# ==========================================================
-elif secilen_sayfa == nav_options[0]:
-    st.title(prof_txt["title"])
+if page == nav[0]:
+    st.title(prof["ti"])
     c1, c2 = st.columns(2)
     with c1:
-        cin = st.radio(txt_gender, ["Male/Erkek", "Female/Kadın"], horizontal=True)
-        yas = st.number_input(txt_age, 10, 100, 25)
-        boy = st.number_input(txt_height, 100, 250, 175)
+        # BURASI DÜZELDİ: Artık değişken kullanıyor
+        cin = st.radio(prof["gen"], [prof["m"], prof["f"]], horizontal=True)
+        yas = st.number_input(prof["age"], 10, 100, 25)
+        boy = st.number_input(prof["h"], 100, 250, 175)
     with c2:
-        kilo = st.number_input(txt_weight, 30.0, 200.0, 70.0, step=1.0, format="%.1f")
-        hedef = st.number_input(txt_target, 30.0, 200.0, 70.0, step=1.0, format="%.1f")
-        akt = st.selectbox("Activity", act_lvls)
+        kilo = st.number_input(prof["w"], 30.0, 200.0, 70.0, step=1.0, format="%.1f")
+        hedef = st.number_input(prof["tar"], 30.0, 200.0, 70.0, step=1.0, format="%.1f")
+        akt = st.selectbox(prof["act"], acts)
     
-    if st.button(prof_txt["calc"], type="primary"):
-        log_kaydet("Profil Hesaplama", f"{yas}y, {kilo}kg -> {hedef}kg")
+    if st.button(prof["btn"], type="primary"):
+        log_kaydet("Profil", f"{yas}y, {kilo}->{hedef}kg")
+        bmr = 10*kilo + 6.25*boy - 5*yas + (5 if cin == prof["m"] else -161)
+        tdee = bmr * [1.2, 1.375, 1.55, 1.725][acts.index(akt)]
         
-        # Basit BMR Hesaplama (Gösterim Amaçlı)
-        bmr = 10*kilo + 6.25*boy - 5*yas + 5
-        tdee = bmr * 1.4
+        target_cal = tdee - 500 if hedef < kilo else (tdee + 400 if hedef > kilo else tdee)
         
-        st.success(f"Günlük İhtiyaç: {int(tdee)} kcal")
-        
+        st.metric("Target Kcal", int(target_cal))
         with st.spinner("AI..."):
             try:
-                prompt = f"Diet plan for {yas} years, {kilo}kg to {hedef}kg. Lang: {secilen_dil}"
-                res = model.generate_content(prompt).text
+                res = model.generate_content(f"Diet plan for {yas}y, {kilo}kg to {hedef}kg. Lang: {secilen_dil}").text
                 st.info(res)
             except: pass
 
 # ==========================================================
 # SAYFA 2: ŞEF
 # ==========================================================
-elif secilen_sayfa == nav_options[1]:
-    st.title(nav_options[1])
-    mod = st.sidebar.radio("Mode", chef_txt["goals"])
-    img = st.file_uploader(chef_txt["upload"], type=["jpg","png","jpeg"])
+elif page == nav[1]:
+    st.title(nav[1])
+    mod = st.sidebar.radio("Mode", chef["goals"])
+    img = st.file_uploader(chef["up"], type=["jpg","png","jpeg"])
     
-    if img and st.button(chef_txt["btn"], type="primary"):
-        log_kaydet("Foto Analizi", str(mod))
-        with st.spinner("AI..."):
+    if img and st.button(chef["btn"], type="primary"):
+        log_kaydet("Foto", str(mod))
+        with st.spinner("..."):
             try:
-                prompt = f"Analyze fridge. Lang: {secilen_dil}. Goal: {mod}. Add Macros box."
-                res = model.generate_content([prompt, PIL.Image.open(img)])
+                prm = f"Analyze fridge. Lang: {secilen_dil}. Goal: {mod}. Include Macros."
+                res = model.generate_content([prm, PIL.Image.open(img)])
                 st.markdown(res.text, unsafe_allow_html=True)
             except: pass
 
 # ==========================================================
 # SAYFA 3: TAKİP
 # ==========================================================
-elif secilen_sayfa == nav_options[2]:
-    st.title(track_txt["title"])
+elif page == nav[2]:
+    st.title(track["ti"])
     db = verileri_yukle()
-    date_str = str(st.date_input("📅", datetime.today()))
-    if date_str not in db: db[date_str] = {"1":[],"2":[],"3":[],"4":[]}
+    d_str = str(st.date_input("📅", datetime.today()))
+    if d_str not in db: db[d_str] = {"1":[],"2":[],"3":[],"4":[]}
     
-    st.subheader(track_txt["add"])
+    st.subheader(track["add"])
     if 'cal' not in st.session_state: st.session_state.update({'cal':0,'pro':0,'carb':0,'fat':0})
     
     c1, c2 = st.columns([1,1])
     with c1:
-        ogun = st.selectbox(track_txt["meal"], meals)
+        ogun = st.selectbox(track["meal"], meals)
         oid = str(meals.index(ogun)+1)
+        # Yemek listesi dile göre geliyor
         liste = YEMEK_SOZLUGU.get(secilen_dil, YEMEK_SOZLUGU["Türkçe"])
-        ymk = st.selectbox(track_txt["food"], liste)
-        mik = st.number_input(track_txt["portion"], 0.5, 10.0, 1.0, 0.5)
+        ymk = st.selectbox(track["food"], liste)
+        mik = st.number_input(track["por"], 0.5, 10.0, 1.0, 0.5)
         
-        if st.button(track_txt["calc_ai"]):
-            log_kaydet("Kalori Sorgu", f"{ymk} x {mik}")
+        if st.button(track["ai"]):
             try:
-                res = model.generate_content(f"Calculate macros for {mik}x {ymk}. Numbers only: Cal,Pro,Carb,Fat").text.strip().split(',')
+                res = model.generate_content(f"Macros for {mik}x {ymk}. Only numbers: Cal,Pro,Carb,Fat").text.strip().split(',')
                 st.session_state['cal'] = int(float(res[0]))
                 st.session_state['pro'] = int(float(res[1]))
                 st.session_state['carb'] = int(float(res[2]))
@@ -220,19 +214,26 @@ elif secilen_sayfa == nav_options[2]:
         carb = st.number_input("Carb", value=st.session_state['carb'])
         fat = st.number_input("Fat", value=st.session_state['fat'])
         
-    if st.button(track_txt["save"], type="primary"):
-        log_kaydet("Yemek Kayıt", f"{ymk}")
-        db[date_str][oid].append({"yemek":f"{mik}x {ymk}","kalori":cal,"protein":pro,"karbon":carb,"yag":fat})
+    if st.button(track["save"], type="primary"):
+        db[d_str][oid].append({"yemek":f"{mik}x {ymk}","kalori":cal,"protein":pro,"karbon":carb,"yag":fat})
         veriyi_kaydet(db)
         st.session_state['cal']=0
         st.rerun()
 
     st.divider()
-    top_cal = sum(x['kalori'] for k in db[date_str] for x in db[date_str][k])
-    st.metric("Total Kcal", top_cal)
+    st.subheader(track["sum"])
+    t_cal = sum(x['kalori'] for k in db[d_str] for x in db[d_str][k])
+    st.metric("Total", t_cal)
     
-    # Listeleme
     for i,m in enumerate(meals):
-        if db[date_str][str(i+1)]:
+        if db[d_str][str(i+1)]:
             st.text(m)
-            for y in db[date_str][str(i+1)]: st.caption(f"{y['yemek']} - {y['kalori']} kcal")
+            for y in db[d_str][str(i+1)]: st.caption(f"{y['yemek']} - {y['kalori']} kcal")
+
+# ==========================================================
+# SAYFA 4: ADMİN
+# ==========================================================
+elif st.session_state.get('is_admin') and page == "🕵️‍♂️ ADMİN":
+    st.title("🕵️‍♂️ Admin Panel")
+    if os.path.exists(LOG_DOSYASI):
+        with open(LOG_DOSYASI,"r",encoding="utf-8") as f: st.dataframe(json.load(f)[::-1])
