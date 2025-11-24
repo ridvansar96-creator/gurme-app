@@ -9,36 +9,79 @@ genai.configure(api_key="AIzaSyA40KR2_2i7nlw44bKWO670j7MDcxC2Ees")
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- SAYFA TASARIMI ---
-st.set_page_config(page_title="Buzdolabı Gurmesi", page_icon="🍳")
+st.set_page_config(page_title="Buzdolabı Gurmesi", page_icon="🥗", layout="wide")
 
-st.title("🍳 Buzdolabı Gurmesi")
-st.write("Dolabın fotoğrafını yükle, sana krallar gibi tarif vereyim!")
+# --- YAN MENÜ (SIDEBAR) ---
+# Kullanıcının seçim yapacağı yer burası
+st.sidebar.title("⚙️ Ayarlar / Settings")
 
-# 1. Resim Yükleme
-yuklenen_resim = st.file_uploader("Resmi buraya bırak veya seç", type=["jpg", "jpeg", "png"])
+# 1. Dil Seçeneği
+secilen_dil = st.sidebar.selectbox(
+    "Dil Seçin / Select Language",
+    ["Türkçe", "English", "Deutsch", "Español", "Français", "العربية"]
+)
 
-# 2. Resim Yüklendiyse
+# 2. Şef Modu (Kişilik)
+sef_modu = st.sidebar.radio(
+    "Hedefiniz Nedir?",
+    ["👨‍🍳 Standart Lezzet (Sadece doyur)", 
+     "🥗 Diyetisyen (Düşük kalori, sağlıklı)", 
+     "💪 Sporcu (Yüksek protein, enerji)"]
+)
+
+st.sidebar.info("💡 Modu değiştirerek tariflerin içeriğini değiştirebilirsiniz.")
+
+# --- ANA EKRAN ---
+st.title("🥗 Buzdolabı Gurmesi v2.0")
+
+# Başlık dile göre değişsin istersen basit bir if yapısı:
+if secilen_dil == "English":
+    st.write("Upload your fridge photo, get the best recipes!")
+else:
+    st.write("Dolabın fotoğrafını yükle, sana en uygun tarifi vereyim!")
+
+# Resim Yükleme
+yuklenen_resim = st.file_uploader("Resmi buraya bırak / Upload Image", type=["jpg", "jpeg", "png"])
+
 if yuklenen_resim is not None:
     image = PIL.Image.open(yuklenen_resim)
-    st.image(image, caption='Senin Dolap', use_column_width=True)
+    # Resmi ortalayarak gösterelim
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.image(image, caption='Analiz Ediliyor...', use_column_width=True)
     
-    # 3. Butona Basılınca
-    if st.button('Bana Yemek Bul! 🚀', type="primary"):
-        with st.spinner('Şef malzemeleri inceliyor, tarif hazırlanıyor...'):
+    # Buton
+    buton_metni = "Analiz Et ve Tarif Bul! 🚀"
+    if secilen_dil == "English": buton_metni = "Analyze & Find Recipes! 🚀"
+    
+    if st.button(buton_metni, type="primary"):
+        with st.spinner('Yapay zeka hesaplama yapıyor... / AI is thinking...'):
             try:
-                # Yapay Zekaya Soruyoruz
-                prompt = "Bu resimdeki malzemeleri analiz et. Bana bu malzemelerle yapabileceğim Dünya Mutfağından (Türk, İtalyan, Asya, Amerikan vb.) en lezzetli 2-3 farklı tarif seçeneği sun. Hangisi daha kolaysa onu öne çıkar. Samimi bir dil kullan."
-                cevap = model.generate_content([prompt, image])
+                # --- prompt (EMİR) HAZIRLAMA ---
+                # Burası çok önemli. Seçilen moda göre emri değiştiriyoruz.
                 
-                # Cevabı Yazdırıyoruz
-                st.success("👨‍🍳 İşte Şefin Önerisi:")
+                ana_komut = f"Bu resimdeki yiyecekleri analiz et. Bana {secilen_dil} dilinde cevap ver."
+                
+                if "Diyetisyen" in sef_modu:
+                    ozel_istek = "Sen uzman bir diyetisyensin. Bana kalorisi düşük, sağlıklı ve kilo aldırmayan 2 tarif ver. Her tarifin yaklaşık kalori değerini ve sağlık faydalarını mutlaka yaz."
+                elif "Sporcu" in sef_modu:
+                    ozel_istek = "Sen profesyonel bir sporcu koçusun. Bana kas gelişimini destekleyen, yüksek proteinli 2 tarif ver. Antrenman öncesi mi sonrası mı yenmeli belirt."
+                else: # Standart
+                    ozel_istek = "Sen samimi bir Türk şefisin. Elimizdekilerle yapılabilecek en lezzetli, en pratik 2 tarifi ver. Dünya mutfağından da olabilir."
+                
+                final_prompt = [f"{ana_komut} {ozel_istek} Eksik malzeme varsa söyle.", image]
+                
+                # Yapay Zekaya Gönder
+                cevap = model.generate_content(final_prompt)
+                
+                # Cevabı Yazdır
+                st.success("✅ Sonuç / Result:")
                 st.write(cevap.text)
                 
                 # --- PARA KAZANMA BÖLÜMÜ ---
-                st.divider() 
-                st.info("💡 Tarifteki malzemeler evde yok mu?")
-                st.link_button("🛒 Eksik Malzemeleri Hemen Söyle", "https://www.getir.com")
-                st.caption("Bu butona tıklayarak yapacağınız alışverişlerden uygulamamız komisyon kazanabilir. Afiyet olsun! 😉")
+                st.divider()
+                st.info("🛒 Market / Shopping")
+                st.link_button("Eksikleri Getir'den Söyle", "https://www.getir.com")
                 
             except Exception as e:
-                st.error(f"Hata oluştu usta: {e}")
+                st.error(f"Hata / Error: {e}")
