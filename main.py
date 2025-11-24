@@ -4,7 +4,12 @@ import PIL.Image
 
 # --- AYARLAR ---
 # BURAYA KENDİ UZUN ŞİFRENİ YAPIŞTIR
-genai.configure(api_key="AIzaSyA40KR2_2i7nlw44bKWO670j7MDcxC2Ees")
+# ARTIK ŞİFREYİ KASADAN AL DİYORUZ
+if "api_key" in st.secrets:
+    genai.configure(api_key=st.secrets["api_key"])
+else:
+    # Bilgisayarında çalışırken hata vermesin diye (opsiyonel)
+    st.error("Lütfen Streamlit ayarlarından API anahtarını girin!")
 
 model = genai.GenerativeModel('gemini-2.5-flash')
 
