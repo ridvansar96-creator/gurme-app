@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import PIL.Image
 
-# --- GÜVENLİK AYARI (Secrets'tan alır) ---
+# --- GÜVENLİK (Secrets'tan Şifreyi Al) ---
 if "api_key" in st.secrets:
     genai.configure(api_key=st.secrets["api_key"])
 else:
@@ -11,95 +11,88 @@ else:
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Buzdolabı Gurmesi", page_icon="🥗", layout="wide")
+st.set_page_config(page_title="Buzdolabı Gurmesi", page_icon="🍳", layout="wide")
 
-# --- YAN MENÜ (SIDEBAR) ---
+# --- UYGULAMA MAKYAJI (MOBİL GÖRÜNÜM) ---
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            .stApp { margin-top: -80px; }
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# --- YAN MENÜ ---
 st.sidebar.title("⚙️ Ayarlar / Settings")
 
-# 1. Dil Seçeneği
+# Dil Seçeneği
 secilen_dil = st.sidebar.selectbox(
     "Dil Seçin / Select Language",
     ["Türkçe", "English", "Deutsch", "Español", "Français", "العربية"]
 )
 
-# 2. Şef Modu (Dile Göre Değişen Seçenekler)
-# Önce seçenekleri dile göre hazırlayalım
+# Mod Seçeneği
 if secilen_dil == "English":
     mod_basligi = "What is your goal?"
-    secenekler = [
-        "👨‍🍳 Standard Taste (Just feed me)", 
-        "🥗 Dietitian (Low calorie, healthy)", 
-        "💪 Athlete (High protein, energy)"
-    ]
+    secenekler = ["👨‍🍳 Standard", "🥗 Dietitian", "💪 Athlete"]
 elif secilen_dil == "Deutsch":
     mod_basligi = "Was ist dein Ziel?"
-    secenekler = [
-        "👨‍🍳 Standardgeschmack", 
-        "🥗 Ernährungsberater", 
-        "💪 Sportler"
-    ]
-else: # Varsayılan Türkçe
+    secenekler = ["👨‍🍳 Standard", "🥗 Ernährungsberater", "💪 Sportler"]
+else:
     mod_basligi = "Hedefiniz Nedir?"
-    secenekler = [
-        "👨‍🍳 Standart Lezzet (Sadece doyur)", 
-        "🥗 Diyetisyen (Düşük kalori, sağlıklı)", 
-        "💪 Sporcu (Yüksek protein, enerji)"
-    ]
+    secenekler = ["👨‍🍳 Standart", "🥗 Diyetisyen", "💪 Sporcu"]
 
-# Radyo butonunu oluşturuyoruz
 sef_modu = st.sidebar.radio(mod_basligi, secenekler)
 
-st.sidebar.info("💡 " + ("Modu değiştirerek tarifleri özelleştir." if secilen_dil == "Türkçe" else "Change mode to customize recipes."))
-
 # --- ANA EKRAN ---
-st.title("🥗 Buzdolabı Gurmesi v2.1")
+st.title("🍳 Buzdolabı Gurmesi")
 
-# Başlıklar
+# Dile göre metinler
 if secilen_dil == "English":
-    st.write("Upload your fridge photo, get the best recipes!")
     upload_text = "Upload Image"
     button_text = "Analyze & Find Recipes! 🚀"
-    loading_text = "AI is thinking..."
+    loading_text = "AI is calculating macros..."
     result_text = "✅ Result:"
+    st.write("Upload your fridge photo, get the best recipes with macros!")
 elif secilen_dil == "Deutsch":
-    st.write("Lade ein Foto deines Kühlschranks hoch!")
     upload_text = "Bild hochladen"
-    button_text = "Analysieren & Rezepte finden! 🚀"
-    loading_text = "KI denkt nach..."
+    button_text = "Analysieren! 🚀"
+    loading_text = "KI berechnet Nährwerte..."
     result_text = "✅ Ergebnis:"
+    st.write("Lade ein Foto hoch, erhalte Rezepte mit Nährwertangaben!")
 else:
-    st.write("Dolabın fotoğrafını yükle, sana en uygun tarifi vereyim!")
     upload_text = "Resmi buraya bırak veya seç"
     button_text = "Analiz Et ve Tarif Bul! 🚀"
-    loading_text = "Yapay zeka hesaplama yapıyor..."
+    loading_text = "Yapay zeka besin değerlerini hesaplıyor..."
     result_text = "✅ Sonuç:"
+    st.write("Dolabın fotoğrafını yükle, besin değerleriyle birlikte tarifini al!")
 
 # Resim Yükleme
 yuklenen_resim = st.file_uploader(upload_text, type=["jpg", "jpeg", "png"])
 
 if yuklenen_resim is not None:
     image = PIL.Image.open(yuklenen_resim)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.image(image, caption='...', use_column_width=True)
+    st.image(image, caption='Analiz Ediliyor...', use_column_width=True)
     
     if st.button(button_text, type="primary"):
         with st.spinner(loading_text):
             try:
-                # --- prompt (EMİR) HAZIRLAMA ---
-                # EMOJİ TAKTİĞİ: Kelimeye değil, emojiye bakıyoruz.
-                # Böylece dil İngilizce olsa bile "🥗" emojisini görünce diyetisyen olduğunu anlıyor.
-                
+                # --- YENİ EMRİMİZ (PROMPT) ---
                 ana_komut = f"Bu resimdeki yiyecekleri analiz et. Bana {secilen_dil} dilinde cevap ver."
                 
-                if "🥗" in sef_modu: # Diyetisyen Emojisi
-                    ozel_istek = "Sen uzman bir diyetisyensin. Bana kalorisi düşük, sağlıklı ve kilo aldırmayan 2 tarif ver. Her tarifin yaklaşık kalori değerini yaz."
-                elif "💪" in sef_modu: # Sporcu Emojisi
-                    ozel_istek = "Sen profesyonel bir sporcu koçusun. Bana kas gelişimini destekleyen, yüksek proteinli 2 tarif ver."
-                else: # Standart (Aşçı Emojisi 👨‍🍳)
-                    ozel_istek = "Sen samimi bir şefsin. Elimizdekilerle yapılabilecek en lezzetli 2 tarifi ver."
+                # İşte senin istediğin BESİN DEĞERİ komutu:
+                besin_komutu = "Her tarifin sonunda mutlaka ayrı bir kutu veya liste içinde şunları yaz: 1 porsiyon için Tahmini Kalori (kcal), Protein (gr), Karbonhidrat (gr) ve Yağ (gr) miktarları."
                 
-                final_prompt = [f"{ana_komut} {ozel_istek} Eksik malzeme varsa söyle.", image]
+                if "🥗" in sef_modu:
+                    ozel_istek = "Sen uzman bir diyetisyensin. Düşük kalorili, sağlıklı 2 tarif ver."
+                elif "💪" in sef_modu:
+                    ozel_istek = "Sen sporcu koçusun. Kas gelişimi için Yüksek proteinli 2 tarif ver."
+                else:
+                    ozel_istek = "Sen samimi bir şefsin. En lezzetli ve pratik 2 tarif ver."
+                
+                final_prompt = [f"{ana_komut} {ozel_istek} {besin_komutu} Eksik malzeme varsa söyle.", image]
                 
                 cevap = model.generate_content(final_prompt)
                 
@@ -107,7 +100,17 @@ if yuklenen_resim is not None:
                 st.write(cevap.text)
                 
                 st.divider()
-                st.link_button("🛒 " + ("Shop Ingredients" if secilen_dil == "English" else "Eksikleri Getir"), "https://www.getir.com")
+                
+                # --- GİZLENEN LİNK ---
+                # İleride buradaki '#' işaretlerini kaldırdığında buton geri gelecek.
+                # buy_text = "Shop Ingredients" if secilen_dil == "English" else "Eksikleri Getir'den Söyle"
+                # st.link_button(f"🛒 {buy_text}", "https://www.getir.com")
+                
+                # Şimdilik kullanıcıya boş görünmesin diye bir not (Opsiyonel):
+                if secilen_dil == "Türkçe":
+                    st.caption("💡 Afiyet olsun! Yakında market siparişi özelliği eklenecektir.")
+                else:
+                    st.caption("💡 Bon Appetit! Market ordering coming soon.")
                 
             except Exception as e:
                 st.error(f"Error: {e}")
