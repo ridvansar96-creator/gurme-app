@@ -54,35 +54,34 @@ def log_kaydet(islem, detay):
     with open(LOG_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(logs, f, ensure_ascii=False, indent=4)
 
-# --- ATOM BOMBASI MAKYAJI (KESİN ÇÖZÜM) ---
+# --- KESİN ÇÖZÜM MAKYAJI ---
 hide_streamlit_style = """
 <style>
-    /* 1. Sağ Üstteki GitHub ve Seçenekler Menüsünü (Toolbar) KOMPLE YOK ET */
-    [data-testid="stToolbar"] {
-        visibility: hidden !important;
-        display: none !important;
-    }
-
-    /* 2. Alt Bilgiyi (Footer) YOK ET */
-    footer {
-        visibility: hidden !important;
-        display: none !important;
-    }
+    /* 1. Footer'ı tamamen yok et */
+    footer {visibility: hidden !important; display: none !important;}
     
-    /* 3. Sağ Alttaki Kırmızı/Gri Yönetici Butonlarını YOK ET */
+    /* 2. Sağ Üstteki "Deploy" ve Seçenekler Menüsünü (Toolbar) yok et */
+    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
+    
+    /* 3. Sağ Alttaki Kırmızı "Manage App" Butonunu yok et */
     .stDeployButton {display:none !important;}
+    
+    /* 4. Sağ Alttaki Durum Widget'ını yok et */
     [data-testid="stStatusWidget"] {display:none !important;}
-    div[class*="viewerBadge"] {display:none !important;}
     
-    /* 4. Üstteki Renkli Gökkuşağı Çizgisini YOK ET */
+    /* 5. Üstteki renkli çizgiyi yok et */
     [data-testid="stDecoration"] {display:none !important;}
-
-    /* 5. Sol Üstteki Menü Butonuna DOKUNMA (Bu yüzden header'ı gizlemiyoruz) */
     
-    /* 6. Mobilde üst boşluğu ayarla */
+    /* 6. Mobilde üst boşluğu azalt (Menü butonu kalsın diye header'ı gizlemiyoruz) */
     .block-container {
-        padding-top: 1rem;
+        padding-top: 2rem;
     }
+    
+    /* 7. Eğer hala inatçı buton varsa, iframe içindeki butonları hedefle (Genel Temizlik) */
+    button[kind="header"] {display: none !important;}
+    
+    /* NOT: Sol üstteki menü butonu (Hamburger) [data-testid="collapsedControl"] içindedir.
+       Ona dokunmuyoruz, o yüzden görünür kalacak. */
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
