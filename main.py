@@ -97,7 +97,7 @@ if yuklenen_resim is not None:
                 cevap = model.generate_content(final_prompt)
                 
                 st.success(result_text)
-                st.write(cevap.text)
+                st.markdown(cevap.text, unsafe_allow_html=True)
                 
                 st.divider()
                 
