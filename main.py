@@ -2,22 +2,18 @@ import streamlit as st
 import google.generativeai as genai
 import PIL.Image
 
-# --- AYARLAR ---
-# BURAYA KENDİ UZUN ŞİFRENİ YAPIŞTIR
-# ARTIK ŞİFREYİ KASADAN AL DİYORUZ
+# --- GÜVENLİK AYARI (Secrets'tan alır) ---
 if "api_key" in st.secrets:
     genai.configure(api_key=st.secrets["api_key"])
 else:
-    # Bilgisayarında çalışırken hata vermesin diye (opsiyonel)
-    st.error("Lütfen Streamlit ayarlarından API anahtarını girin!")
+    st.error("API Anahtarı bulunamadı! Lütfen Secrets ayarlarını kontrol et.")
 
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# --- SAYFA TASARIMI ---
+# --- SAYFA AYARLARI ---
 st.set_page_config(page_title="Buzdolabı Gurmesi", page_icon="🥗", layout="wide")
 
 # --- YAN MENÜ (SIDEBAR) ---
-# Kullanıcının seçim yapacağı yer burası
 st.sidebar.title("⚙️ Ayarlar / Settings")
 
 # 1. Dil Seçeneği
@@ -26,67 +22,92 @@ secilen_dil = st.sidebar.selectbox(
     ["Türkçe", "English", "Deutsch", "Español", "Français", "العربية"]
 )
 
-# 2. Şef Modu (Kişilik)
-sef_modu = st.sidebar.radio(
-    "Hedefiniz Nedir?",
-    ["👨‍🍳 Standart Lezzet (Sadece doyur)", 
-     "🥗 Diyetisyen (Düşük kalori, sağlıklı)", 
-     "💪 Sporcu (Yüksek protein, enerji)"]
-)
+# 2. Şef Modu (Dile Göre Değişen Seçenekler)
+# Önce seçenekleri dile göre hazırlayalım
+if secilen_dil == "English":
+    mod_basligi = "What is your goal?"
+    secenekler = [
+        "👨‍🍳 Standard Taste (Just feed me)", 
+        "🥗 Dietitian (Low calorie, healthy)", 
+        "💪 Athlete (High protein, energy)"
+    ]
+elif secilen_dil == "Deutsch":
+    mod_basligi = "Was ist dein Ziel?"
+    secenekler = [
+        "👨‍🍳 Standardgeschmack", 
+        "🥗 Ernährungsberater", 
+        "💪 Sportler"
+    ]
+else: # Varsayılan Türkçe
+    mod_basligi = "Hedefiniz Nedir?"
+    secenekler = [
+        "👨‍🍳 Standart Lezzet (Sadece doyur)", 
+        "🥗 Diyetisyen (Düşük kalori, sağlıklı)", 
+        "💪 Sporcu (Yüksek protein, enerji)"
+    ]
 
-st.sidebar.info("💡 Modu değiştirerek tariflerin içeriğini değiştirebilirsiniz.")
+# Radyo butonunu oluşturuyoruz
+sef_modu = st.sidebar.radio(mod_basligi, secenekler)
+
+st.sidebar.info("💡 " + ("Modu değiştirerek tarifleri özelleştir." if secilen_dil == "Türkçe" else "Change mode to customize recipes."))
 
 # --- ANA EKRAN ---
-st.title("🥗 Buzdolabı Gurmesi v2.0")
+st.title("🥗 Buzdolabı Gurmesi v2.1")
 
-# Başlık dile göre değişsin istersen basit bir if yapısı:
+# Başlıklar
 if secilen_dil == "English":
     st.write("Upload your fridge photo, get the best recipes!")
+    upload_text = "Upload Image"
+    button_text = "Analyze & Find Recipes! 🚀"
+    loading_text = "AI is thinking..."
+    result_text = "✅ Result:"
+elif secilen_dil == "Deutsch":
+    st.write("Lade ein Foto deines Kühlschranks hoch!")
+    upload_text = "Bild hochladen"
+    button_text = "Analysieren & Rezepte finden! 🚀"
+    loading_text = "KI denkt nach..."
+    result_text = "✅ Ergebnis:"
 else:
     st.write("Dolabın fotoğrafını yükle, sana en uygun tarifi vereyim!")
+    upload_text = "Resmi buraya bırak veya seç"
+    button_text = "Analiz Et ve Tarif Bul! 🚀"
+    loading_text = "Yapay zeka hesaplama yapıyor..."
+    result_text = "✅ Sonuç:"
 
 # Resim Yükleme
-yuklenen_resim = st.file_uploader("Resmi buraya bırak / Upload Image", type=["jpg", "jpeg", "png"])
+yuklenen_resim = st.file_uploader(upload_text, type=["jpg", "jpeg", "png"])
 
 if yuklenen_resim is not None:
     image = PIL.Image.open(yuklenen_resim)
-    # Resmi ortalayarak gösterelim
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        st.image(image, caption='Analiz Ediliyor...', use_column_width=True)
+        st.image(image, caption='...', use_column_width=True)
     
-    # Buton
-    buton_metni = "Analiz Et ve Tarif Bul! 🚀"
-    if secilen_dil == "English": buton_metni = "Analyze & Find Recipes! 🚀"
-    
-    if st.button(buton_metni, type="primary"):
-        with st.spinner('Yapay zeka hesaplama yapıyor... / AI is thinking...'):
+    if st.button(button_text, type="primary"):
+        with st.spinner(loading_text):
             try:
                 # --- prompt (EMİR) HAZIRLAMA ---
-                # Burası çok önemli. Seçilen moda göre emri değiştiriyoruz.
+                # EMOJİ TAKTİĞİ: Kelimeye değil, emojiye bakıyoruz.
+                # Böylece dil İngilizce olsa bile "🥗" emojisini görünce diyetisyen olduğunu anlıyor.
                 
                 ana_komut = f"Bu resimdeki yiyecekleri analiz et. Bana {secilen_dil} dilinde cevap ver."
                 
-                if "Diyetisyen" in sef_modu:
-                    ozel_istek = "Sen uzman bir diyetisyensin. Bana kalorisi düşük, sağlıklı ve kilo aldırmayan 2 tarif ver. Her tarifin yaklaşık kalori değerini ve sağlık faydalarını mutlaka yaz."
-                elif "Sporcu" in sef_modu:
-                    ozel_istek = "Sen profesyonel bir sporcu koçusun. Bana kas gelişimini destekleyen, yüksek proteinli 2 tarif ver. Antrenman öncesi mi sonrası mı yenmeli belirt."
-                else: # Standart
-                    ozel_istek = "Sen samimi bir Türk şefisin. Elimizdekilerle yapılabilecek en lezzetli, en pratik 2 tarifi ver. Dünya mutfağından da olabilir."
+                if "🥗" in sef_modu: # Diyetisyen Emojisi
+                    ozel_istek = "Sen uzman bir diyetisyensin. Bana kalorisi düşük, sağlıklı ve kilo aldırmayan 2 tarif ver. Her tarifin yaklaşık kalori değerini yaz."
+                elif "💪" in sef_modu: # Sporcu Emojisi
+                    ozel_istek = "Sen profesyonel bir sporcu koçusun. Bana kas gelişimini destekleyen, yüksek proteinli 2 tarif ver."
+                else: # Standart (Aşçı Emojisi 👨‍🍳)
+                    ozel_istek = "Sen samimi bir şefsin. Elimizdekilerle yapılabilecek en lezzetli 2 tarifi ver."
                 
                 final_prompt = [f"{ana_komut} {ozel_istek} Eksik malzeme varsa söyle.", image]
                 
-                # Yapay Zekaya Gönder
                 cevap = model.generate_content(final_prompt)
                 
-                # Cevabı Yazdır
-                st.success("✅ Sonuç / Result:")
+                st.success(result_text)
                 st.write(cevap.text)
                 
-                # --- PARA KAZANMA BÖLÜMÜ ---
                 st.divider()
-                st.info("🛒 Market / Shopping")
-                st.link_button("Eksikleri Getir'den Söyle", "https://www.getir.com")
+                st.link_button("🛒 " + ("Shop Ingredients" if secilen_dil == "English" else "Eksikleri Getir"), "https://www.getir.com")
                 
             except Exception as e:
-                st.error(f"Hata / Error: {e}")
+                st.error(f"Error: {e}")
