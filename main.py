@@ -54,28 +54,34 @@ def log_kaydet(islem, detay):
     with open(LOG_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(logs, f, ensure_ascii=False, indent=4)
 
-# --- CSS MAKYAJI (DÜZELTİLMİŞ VERSİYON) ---
+# --- ATOM BOMBASI MAKYAJI (KESİN ÇÖZÜM) ---
 hide_streamlit_style = """
 <style>
-    /* 1. Footer'ı Gizle (Made with Streamlit yazısı) */
-    footer {visibility: hidden;}
-    
-    /* 2. Sağ üstteki 'Deploy' butonunu Gizle */
-    .stDeployButton {display:none;}
-    
-    /* 3. Sağ alttaki kırmızı/gri 'Status' butonlarını Gizle (Göze batanlar) */
-    [data-testid="stStatusWidget"] {display:none;}
-    
-    /* 4. Üstteki Gökkuşağı çizgisini Gizle */
-    [data-testid="stDecoration"] {display:none;}
+    /* 1. Sağ Üstteki GitHub ve Seçenekler Menüsünü (Toolbar) KOMPLE YOK ET */
+    [data-testid="stToolbar"] {
+        visibility: hidden !important;
+        display: none !important;
+    }
 
-    /* 5. DİKKAT: Header'ı (Üst Şeridi) GİZLEMİYORUZ! */
-    /* Header gizlenirse menü butonu da gider. O yüzden o satırı sildik. */
-    /* Menü butonunun rahat çalışması için header görünür kalmalı. */
+    /* 2. Alt Bilgiyi (Footer) YOK ET */
+    footer {
+        visibility: hidden !important;
+        display: none !important;
+    }
+    
+    /* 3. Sağ Alttaki Kırmızı/Gri Yönetici Butonlarını YOK ET */
+    .stDeployButton {display:none !important;}
+    [data-testid="stStatusWidget"] {display:none !important;}
+    div[class*="viewerBadge"] {display:none !important;}
+    
+    /* 4. Üstteki Renkli Gökkuşağı Çizgisini YOK ET */
+    [data-testid="stDecoration"] {display:none !important;}
 
-    /* Mobilde üst boşluğu biraz azaltalım */
+    /* 5. Sol Üstteki Menü Butonuna DOKUNMA (Bu yüzden header'ı gizlemiyoruz) */
+    
+    /* 6. Mobilde üst boşluğu ayarla */
     .block-container {
-        padding-top: 2rem;
+        padding-top: 1rem;
     }
 </style>
 """
