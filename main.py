@@ -5,76 +5,33 @@ import json
 import os
 from datetime import date
 
-# --- 1. AYARLAR ---
+# ==========================================================
+# 1. AYARLAR VE GÜVENLİK
+# ==========================================================
 st.set_page_config(page_title="Buzdolabı Gurmesi", page_icon="🥗", layout="wide")
 
-# Güvenlik
+# API Anahtarı Kontrolü (Secrets'tan alır)
 if "api_key" in st.secrets:
     genai.configure(api_key=st.secrets["api_key"])
 else:
-    st.error("API Anahtarı bulunamadı! Secrets ayarlarını kontrol et.")
+    st.error("⚠️ API Anahtarı bulunamadı! Lütfen Streamlit 'Secrets' ayarlarını kontrol et.")
+    st.stop()
 
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# --- 2. ÇOK DİLLİ YEMEK LİSTESİ ---
-YEMEK_SOZLUGU = {
-    "Türkçe": [
-        "Adana Kebap", "Ayran", "Baklava", "Balık Izgara", "Barbunya", "Beyti", 
-        "Biber Dolması", "Cacık", "Çiğ Köfte", "Çoban Salata", "Döner (Ekmek Arası)", 
-        "Döner (Porsiyon)", "Elma", "Ezogelin Çorbası", "Fasulye (Kuru)", "Fırın Sütlaç", 
-        "Hamburger", "Haşlanmış Yumurta", "Hünkar Beğendi", "İçli Köfte", 
-        "İskender Kebap", "Karnıyarık", "Kaşarlı Tost", "Kebap (Karışık)", 
-        "Kısır", "Köfte (Izgara)", "Künefe", "Lahmacun", "Mantı", "Menemen", 
-        "Mercimek Çorbası", "Musakka", "Makarna (Sade)", "Makarna (Kıymalı)", "Muz",
-        "Omlet", "Patates Kızartması", "Pide (Kaşarlı)", "Pide (Kıymalı)", 
-        "Pilav (Bulgur)", "Pilav (Pirinç)", "Pizza (Dilim)", "Sarma (Yaprak)", 
-        "Simit", "Su Böreği", "Tantuni", "Tavuk Döner", "Tavuk Haşlama", 
-        "Tavuk Sote", "Taze Fasulye", "Tost (Karışık)", "Urfa Kebap", "Yayla Çorbası"
-    ],
-    "English": [
-        "Apple", "Bagel", "Banana", "BBQ Ribs", "Beef Stew", "Boiled Egg", "Brownie",
-        "Burger", "Caesar Salad", "Cheesecake", "Chicken Curry", "Chicken Nuggets",
-        "Chicken Soup", "Chicken Wings", "Chocolate Cake", "Coffee", "Donuts",
-        "Fish and Chips", "French Fries", "Fried Chicken", "Grilled Cheese",
-        "Grilled Chicken", "Grilled Salmon", "Hot Dog", "Ice Cream", "Lasagna",
-        "Mac and Cheese", "Mashed Potatoes", "Omelette", "Pancakes", "Pasta (Alfredo)",
-        "Pasta (Bolognese)", "Pizza (Slice)", "Potato Salad", "Rice", "Roast Beef",
-        "Sandwich (Club)", "Sandwich (Tuna)", "Smoothie", "Spaghetti", "Steak",
-        "Sushi (Roll)", "Tacos", "Toast", "Waffles", "Yogurt"
-    ],
-    "Deutsch": [
-        "Apfel", "Apfelstrudel", "Bier", "Bratkartoffeln", "Bratwurst", "Brezel",
-        "Brot", "Burger", "Currywurst", "Döner Kebab", "Eisbein", "Frikadelle",
-        "Gemüsesuppe", "Gulasch", "Hähnchen (Gebraten)", "Hamburger", "Kaffee",
-        "Kartoffelsalat", "Kartoffelsuppe", "Käsekuchen", "Knödel", "Leberkäse",
-        "Marmelade", "Maultaschen", "Omelett", "Pfannkuchen", "Pizza", "Pommes Frites",
-        "Rinderroulade", "Sauerbraten", "Sauerkraut", "Schnitzel", "Spätzle",
-        "Spiegelei", "Steak", "Toast", "Wurstsalat"
-    ],
-    "Français": [
-        "Baguette", "Boeuf Bourguignon", "Brioche", "Café", "Camembert", "Cassoulet",
-        "Champagne", "Chocolat", "Confit de Canard", "Coq au Vin", "Crème Brûlée",
-        "Crêpe", "Croissant", "Éclair", "Escargots", "Foie Gras", "Fondue",
-        "Frites", "Fromage", "Gratin Dauphinois", "Hamburger", "Macaron", "Madeleine",
-        "Mousse au Chocolat", "Omelette", "Pain au Chocolat", "Pâtes", "Pizza",
-        "Pot-au-feu", "Poulet Rôti", "Quiche Lorraine", "Ratatouille", "Salade Niçoise",
-        "Sandwich Jambon-Beurre", "Soufflé", "Soupe à l'oignon", "Steak Frites",
-        "Tarte Tatin", "Vin Rouge", "Yaourt"
-    ],
-    "العربية": [
-        "فلافل (Falafel)", "شاورما (Shawarma)", "كبسة (Kabsa)", "hummus (حمص)", 
-        "تبولة (Tabbouleh)", "منسف (Mansaf)", "فتوش (Fattoush)", "ورق عنب (Dolma)",
-        "كباب (Kebab)", "كفتة (Kofta)", "مسخن (Musakhan)", "شكشوكة (Shakshouka)",
-        "بامية (Okra)", "مقلوبة (Maqluba)", "مجدرة (Mujaddara)", "سمبوسك (Sambousek)",
-        "مناقيش (Manakish)", "فول مدمس (Ful Medames)", "كنافة (Kunafa)", "بقلاوة (Baklava)",
-        "برجر (Burger)", "بيتزا (Pizza)", "دجاج مشوي (Grilled Chicken)", "أرز (Rice)",
-        "سلطة (Salad)", "بيض مسلوق (Boiled Egg)", "بيض مقلي (Fried Egg)", "خبز (Bread)",
-        "بطاطس مقلية (French Fries)", "شوربة عدس (Lentil Soup)"
-    ]
-}
-
-# --- 3. VERİ TABANI ---
+# ==========================================================
+# 2. VERİ VE YARDIMCI FONKSİYONLAR
+# ==========================================================
 DOSYA_ADI = "kalori_takibi.json"
+
+# Çok Dilli Yemek Listesi (Autocomplete İçin)
+YEMEK_SOZLUGU = {
+    "Türkçe": ["Adana Kebap", "Ayran", "Baklava", "Balık", "Döner", "Elma", "Fasulye", "Hamburger", "İskender", "Kahve", "Köfte", "Lahmacun", "Makarna", "Menemen", "Muz", "Omlet", "Pilav", "Pizza", "Salata", "Simit", "Tavuk", "Tost", "Yumurta", "Zeytin"],
+    "English": ["Apple", "Banana", "Burger", "Chicken", "Coffee", "Donut", "Egg", "Fish", "Fries", "Hot Dog", "Omelette", "Pasta", "Pizza", "Rice", "Salad", "Sandwich", "Steak", "Sushi", "Toast", "Yogurt"],
+    "Deutsch": ["Apfel", "Bier", "Bratwurst", "Brot", "Burger", "Döner", "Ei", "Fisch", "Hähnchen", "Kaffee", "Kartoffeln", "Kuchen", "Nudeln", "Pizza", "Pommes", "Salat", "Schnitzel", "Wurst"],
+    "Français": ["Baguette", "Café", "Croissant", "Fromage", "Frites", "Hamburger", "Omelette", "Pain", "Pâtes", "Pizza", "Poisson", "Poulet", "Salade", "Sandwich", "Steak", "Vin", "Yaourt"],
+    "العربية": ["فلافل", "شاورما", "كبسة", "دجاج", "لحم", "سمك", "أرز", "خبز", "بيض", "سلطة", "بيتزا", "برجر", "قهوة", "شاي", "فول", "حمص"]
+}
 
 def verileri_yukle():
     if not os.path.exists(DOSYA_ADI): return {}
@@ -86,7 +43,7 @@ def veriyi_kaydet(data):
     with open(DOSYA_ADI, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# --- 4. MAKYAJ ---
+# Uygulama Makyajı (Streamlit yazılarını gizle)
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -97,203 +54,213 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# --- 5. YAN MENÜ (DİL SEÇİMİ) ---
+# ==========================================================
+# 3. YAN MENÜ (DİL VE NAVİGASYON)
+# ==========================================================
 st.sidebar.title("🌐 Dil / Language")
 secilen_dil = st.sidebar.selectbox("Seç / Select", ["Türkçe", "English", "Deutsch", "Français", "العربية"])
 st.sidebar.divider()
 
-# --- 6. DİL AYARLARI (SÖZLÜK) ---
-# Her dil için bütün metinleri burada ayarlıyoruz
+# DİL AYARLARI (TÜM METİNLER)
 if secilen_dil == "English":
-    menu_baslik, nav_baslik = "📱 Menu", "Where to go?"
-    sayfa_isimleri = ["📸 Fridge Chef", "📊 Calorie Tracker"]
-    
-    # Sayfa 1 Metinleri
-    chef_settings, goal_title = "⚙️ Chef Settings", "What is your goal?"
-    goals = ["👨‍🍳 Standard", "🥗 Dietitian", "💪 Athlete"]
-    upload_text, analyze_btn, result_txt = "Upload Image", "Analyze! 🚀", "✅ Result:"
-    main_title_1, sub_title_1 = "📸 Fridge Chef", "Upload fridge photo, get recipes."
-    
-    # Sayfa 2 Metinleri
-    tracker_title, add_meal_title = "📊 Daily Tracker", "➕ Add Meal"
+    menu_title = "📱 Menu"
+    nav_options = ["👤 Profile & Goals", "📸 Fridge Chef", "📊 Calorie Tracker"]
+    # Profil Metinleri
+    prof_txt = {"title": "👤 Profile & Goal Settings", "gender": "Gender", "male": "Male", "female": "Female", "age": "Age", "height": "Height (cm)", "weight": "Weight (kg)", "target": "Target Weight (kg)", "act": "Activity Level", "calc": "Calculate Plan 🚀", "res_cal": "Target Calories", "res_prot": "Target Protein", "advice": "💡 AI Coach Advice"}
+    act_lvls = ["Sedentary", "Lightly Active", "Moderately Active", "Very Active"]
+    # Şef Metinleri
+    chef_txt = {"goals": ["👨‍🍳 Standard", "🥗 Dietitian", "💪 Athlete"], "upload": "Upload Image", "btn": "Analyze! 🚀", "res": "✅ Result:"}
+    # Takip Metinleri
+    track_txt = {"title": "📊 Daily Tracker", "add": "➕ Add Meal", "meal": "Meal", "food": "Food Name", "portion": "Portion", "calc_ai": "✨ Calculate with AI", "save": "Add to List 💾", "sum": "📅 Summary", "reset": "🗑️ Reset Day"}
     meals = ["Breakfast", "Lunch", "Dinner", "Snack"]
-    labels = ["Calories", "Protein", "Carb", "Fat"]
-    portion_label, add_btn_txt, summary_txt = "Portion", "Add to List 💾", "📅 Summary"
-    reset_btn, ai_btn = "🗑️ Reset Day", "✨ Calculate with AI"
 
 elif secilen_dil == "Deutsch":
-    menu_baslik, nav_baslik = "📱 Menü", "Wohin gehen?"
-    sayfa_isimleri = ["📸 Kühlschrank-Chef", "📊 Kalorien-Tracker"]
-    
-    chef_settings, goal_title = "⚙️ Einstellungen", "Ziel?"
-    goals = ["👨‍🍳 Standard", "🥗 Ernährungsberater", "💪 Sportler"]
-    upload_text, analyze_btn, result_txt = "Bild hochladen", "Analysieren! 🚀", "✅ Ergebnis:"
-    main_title_1, sub_title_1 = "📸 Kühlschrank-Chef", "Lade ein Foto hoch."
-    
-    tracker_title, add_meal_title = "📊 Kalorien-Tracker", "➕ Mahlzeit hinzufügen"
+    menu_title = "📱 Menü"
+    nav_options = ["👤 Profil & Ziele", "📸 Kühlschrank-Chef", "📊 Kalorien-Tracker"]
+    prof_txt = {"title": "👤 Profil & Ziele", "gender": "Geschlecht", "male": "Männlich", "female": "Weiblich", "age": "Alter", "height": "Größe (cm)", "weight": "Gewicht (kg)", "target": "Zielgewicht (kg)", "act": "Aktivität", "calc": "Berechnen 🚀", "res_cal": "Ziel-Kalorien", "res_prot": "Ziel-Protein", "advice": "💡 KI-Rat"}
+    act_lvls = ["Sitzend", "Leicht aktiv", "Mäßig aktiv", "Sehr aktiv"]
+    chef_txt = {"goals": ["👨‍🍳 Standard", "🥗 Ernährungsberater", "💪 Sportler"], "upload": "Bild hochladen", "btn": "Analysieren! 🚀", "res": "✅ Ergebnis:"}
+    track_txt = {"title": "📊 Tracker", "add": "➕ Mahlzeit", "meal": "Mahlzeit", "food": "Essen", "portion": "Portion", "calc_ai": "✨ KI-Berechnung", "save": "Speichern 💾", "sum": "📅 Zusammenfassung", "reset": "🗑️ Reset"}
     meals = ["Frühstück", "Mittagessen", "Abendessen", "Snack"]
-    labels = ["Kalorien", "Eiweiß", "Kohlenhydrate", "Fett"]
-    portion_label, add_btn_txt, summary_txt = "Portion", "Hinzufügen 💾", "📅 Zusammenfassung"
-    reset_btn, ai_btn = "🗑️ Zurücksetzen", "✨ KI-Berechnung"
 
 elif secilen_dil == "Français":
-    menu_baslik, nav_baslik = "📱 Menu", "Où aller ?"
-    sayfa_isimleri = ["📸 Chef Frigo", "📊 Suivi Calories"]
-    
-    chef_settings, goal_title = "⚙️ Paramètres", "Quel objectif ?"
-    goals = ["👨‍🍳 Standard", "🥗 Diététicien", "💪 Athlète"]
-    upload_text, analyze_btn, result_txt = "Télécharger une image", "Analyser ! 🚀", "✅ Résultat :"
-    main_title_1, sub_title_1 = "📸 Chef Frigo", "Téléchargez une photo, obtenez des recettes."
-    
-    tracker_title, add_meal_title = "📊 Suivi Quotidien", "➕ Ajouter un repas"
-    meals = ["Petit-déjeuner", "Déjeuner", "Dîner", "Collation"]
-    labels = ["Calories", "Protéines", "Glucides", "Lipides"]
-    portion_label, add_btn_txt, summary_txt = "Portion", "Ajouter 💾", "📅 Résumé"
-    reset_btn, ai_btn = "🗑️ Réinitialiser", "✨ Calculer avec IA"
+    menu_title = "📱 Menu"
+    nav_options = ["👤 Profil & Objectifs", "📸 Chef Frigo", "📊 Suivi Calories"]
+    prof_txt = {"title": "👤 Profil", "gender": "Genre", "male": "Homme", "female": "Femme", "age": "Âge", "height": "Taille", "weight": "Poids", "target": "Objectif", "act": "Activité", "calc": "Calculer 🚀", "res_cal": "Calories Cibles", "res_prot": "Protéines Cibles", "advice": "💡 Conseil IA"}
+    act_lvls = ["Sédentaire", "Légèrement actif", "Modérément actif", "Très actif"]
+    chef_txt = {"goals": ["👨‍🍳 Standard", "🥗 Diététicien", "💪 Athlète"], "upload": "Image", "btn": "Analyser! 🚀", "res": "✅ Résultat:"}
+    track_txt = {"title": "📊 Suivi", "add": "➕ Ajouter", "meal": "Repas", "food": "Aliment", "portion": "Portion", "calc_ai": "✨ Calcul IA", "save": "Ajouter 💾", "sum": "📅 Résumé", "reset": "🗑️ Réinitialiser"}
+    meals = ["Petit-déj", "Déjeuner", "Dîner", "Collation"]
 
 elif secilen_dil == "العربية":
-    menu_baslik, nav_baslik = "📱 القائمة", "إلى أين؟"
-    sayfa_isimleri = ["📸 شيف الثلاجة", "📊 متتبع السعرات"]
-    
-    chef_settings, goal_title = "⚙️ الإعدادات", "ما هو هدفك؟"
-    goals = ["👨‍🍳 قياسي", "🥗 أخصائي تغذية", "💪 رياضي"]
-    upload_text, analyze_btn, result_txt = "تحميل صورة", "تحليل! 🚀", "✅ النتيجة:"
-    main_title_1, sub_title_1 = "📸 شيف الثلاجة", "حمل صورة ثلاجتك واحصل على وصفات."
-    
-    tracker_title, add_meal_title = "📊 التتبع اليومي", "➕ أضف وجبة"
+    menu_title = "📱 القائمة"
+    nav_options = ["👤 الملف الشخصي", "📸 شيف الثلاجة", "📊 متتبع السعرات"]
+    prof_txt = {"title": "👤 الملف الشخصي", "gender": "الجنس", "male": "ذكر", "female": "أنثى", "age": "العمر", "height": "الطول", "weight": "الوزن", "target": "الهدف", "act": "النشاط", "calc": "احسب 🚀", "res_cal": "السعرات المستهدفة", "res_prot": "البروتين المستهدف", "advice": "💡 نصيحة"}
+    act_lvls = ["خامل", "نشط قليلاً", "نشط متوسط", "نشط جداً"]
+    chef_txt = {"goals": ["👨‍🍳 قياسي", "🥗 صحي", "💪 رياضي"], "upload": "تحميل صورة", "btn": "تحليل! 🚀", "res": "✅ النتيجة:"}
+    track_txt = {"title": "📊 التتبع", "add": "➕ إضافة", "meal": "وجبة", "food": "طعام", "portion": "الكمية", "calc_ai": "✨ حساب ذكي", "save": "حفظ 💾", "sum": "📅 ملخص", "reset": "🗑️ إعادة تعيين"}
     meals = ["إفطار", "غداء", "عشاء", "وجبة خفيفة"]
-    labels = ["سعرات", "بروتين", "كربوهيدرات", "دهون"]
-    portion_label, add_btn_txt, summary_txt = "الكمية", "إضافة للقائمة 💾", "📅 ملخص"
-    reset_btn, ai_btn = "🗑️ إعادة تعيين", "✨ حساب بالذكاء الاصطناعي"
 
 else: # Varsayılan Türkçe
-    menu_baslik, nav_baslik = "📱 Menü", "Gitmek İstediğin Yer:"
-    sayfa_isimleri = ["📸 Buzdolabı Şefi", "📊 Kalori & Diyet Takibi"]
-    
-    chef_settings, goal_title = "⚙️ Şef Ayarları", "Hedef?"
-    goals = ["👨‍🍳 Standart", "🥗 Diyetisyen", "💪 Sporcu"]
-    upload_text, analyze_btn, result_txt = "Resim Yükle", "Analiz Et! 🚀", "✅ Sonuç:"
-    main_title_1, sub_title_1 = "📸 Buzdolabı Şefi", "Dolabın fotoğrafını yükle, tarifini al."
-    
-    tracker_title, add_meal_title = "📊 Günlük Takip", "➕ Ne Yedin?"
+    menu_title = "📱 Menü"
+    nav_options = ["👤 Profil & Hedef", "📸 Buzdolabı Şefi", "📊 Kalori & Diyet Takibi"]
+    prof_txt = {"title": "👤 Profil & Hedef Belirleme", "gender": "Cinsiyet", "male": "Erkek", "female": "Kadın", "age": "Yaş", "height": "Boy (cm)", "weight": "Kilo (kg)", "target": "Hedef Kilo (kg)", "act": "Hareket Seviyesi", "calc": "Hesapla & Planla 🚀", "res_cal": "GÜNLÜK KALORİ HEDEFİ", "res_prot": "GÜNLÜK PROTEİN HEDEFİ", "advice": "💡 Yapay Zeka Koç Tavsiyesi"}
+    act_lvls = ["Hareketsiz", "Az Hareketli", "Orta Hareketli", "Çok Hareketli"]
+    chef_txt = {"goals": ["👨‍🍳 Standart", "🥗 Diyetisyen", "💪 Sporcu"], "upload": "Resim Yükle", "btn": "Analiz Et! 🚀", "res": "✅ Sonuç:"}
+    track_txt = {"title": "📊 Günlük Takip", "add": "➕ Ne Yedin?", "meal": "Öğün Seç", "food": "Yemek Seç / Ara", "portion": "Porsiyon / Adet", "calc_ai": "✨ Değerleri AI ile Getir", "save": "Listeye Ekle 💾", "sum": "📅 Gün Özeti", "reset": "🗑️ Günü Sıfırla"}
     meals = ["Sabah", "Öğle", "Akşam", "Ara Öğün"]
-    labels = ["Kalori (kcal)", "Protein (gr)", "Karb (gr)", "Yağ (gr)"]
-    portion_label, add_btn_txt, summary_txt = "Porsiyon", "Listeye Ekle 💾", "📅 Gün Özeti"
-    reset_btn, ai_btn = "🗑️ Günü Sıfırla", "✨ Değerleri AI ile Getir"
 
-st.sidebar.title(menu_baslik)
-secilen_sayfa = st.sidebar.radio(nav_baslik, sayfa_isimleri)
-st.sidebar.divider()
+st.sidebar.title(menu_title)
+secilen_sayfa = st.sidebar.radio("", nav_options)
 
-# --- SAYFA 1: BUZDOLABI ŞEFİ ---
-if secilen_sayfa == sayfa_isimleri[0]:
-    sef_modu = st.sidebar.radio(goal_title, goals)
-    st.title(main_title_1)
-    st.caption(sub_title_1)
+# ==========================================================
+# SAYFA 1: PROFİL & HEDEF (KİŞİSEL PLAN)
+# ==========================================================
+if secilen_sayfa == nav_options[0]:
+    st.title(prof_txt["title"])
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        cinsiyet = st.radio(prof_txt["gender"], [prof_txt["male"], prof_txt["female"]], horizontal=True)
+        yas = st.number_input(prof_txt["age"], 10, 100, 25)
+        boy = st.number_input(prof_txt["height"], 100, 250, 175)
+    with col2:
+        kilo = st.number_input(prof_txt["weight"], 30.0, 200.0, 70.0)
+        hedef_kilo = st.number_input(prof_txt["target"], 30.0, 200.0, 70.0)
+        aktivite = st.selectbox(prof_txt["act"], act_lvls)
 
-    yuklenen_resim = st.file_uploader(upload_text, type=["jpg", "jpeg", "png"])
+    if st.button(prof_txt["calc"], type="primary"):
+        # Matematiksel Hesaplama (Mifflin-St Jeor)
+        bmr = (10 * kilo) + (6.25 * boy) - (5 * yas) + (5 if cinsiyet == prof_txt["male"] else -161)
+        katsayi = [1.2, 1.375, 1.55, 1.725][act_lvls.index(aktivite)]
+        tdee = bmr * katsayi
+        
+        # Hedef Belirleme
+        if hedef_kilo < kilo: # Zayıflama
+            hedef_kalori = tdee - 500
+            prot_factor = 1.8
+        elif hedef_kilo > kilo: # Kilo Alma
+            hedef_kalori = tdee + 400
+            prot_factor = 2.0
+        else: # Koruma
+            hedef_kalori = tdee
+            prot_factor = 1.4
+            
+        hedef_protein = kilo * prot_factor
 
+        st.divider()
+        c1, c2 = st.columns(2)
+        c1.metric(prof_txt["res_cal"], f"{int(hedef_kalori)} kcal")
+        c2.metric(prof_txt["res_prot"], f"{int(hedef_protein)} gr")
+        
+        # Yapay Zeka Tavsiyesi
+        st.subheader(prof_txt["advice"])
+        with st.spinner("..."):
+            prompt = f"User: {yas} years, {kilo}kg, {boy}cm. Goal: {kilo}->{hedef_kilo}kg. Calculated Calorie Target: {int(hedef_kalori)}. Give motivation and diet roadmap in {secilen_dil}."
+            try:
+                advice = model.generate_content(prompt).text
+                st.success(advice)
+            except: st.error("AI Error")
+
+# ==========================================================
+# SAYFA 2: BUZDOLABI ŞEFİ (TARİF & ANALİZ)
+# ==========================================================
+elif secilen_sayfa == nav_options[1]:
+    st.title(nav_options[1])
+    
+    # Hedef Modu Seçimi
+    sef_modu = st.sidebar.radio("Mode", chef_txt["goals"])
+    
+    # Resim Yükleme
+    yuklenen_resim = st.file_uploader(chef_txt["upload"], type=["jpg", "jpeg", "png"])
+    
     if yuklenen_resim is not None:
         image = PIL.Image.open(yuklenen_resim)
         st.image(image, caption='...', use_column_width=True)
         
-        if st.button(analyze_btn, type="primary"):
-            with st.spinner("..."):
+        if st.button(chef_txt["btn"], type="primary"):
+            with st.spinner("AI thinking..."):
                 try:
-                    ana_komut = f"Analyze these food ingredients. Answer in {secilen_dil} language."
-                    besin_komutu = "At the end, provide estimated Calories, Protein, Carb, and Fat for 1 portion in a colored box."
-                    if "🥗" in sef_modu: ozel_istek = "Act as a Dietitian. Low calorie recipes."
-                    elif "💪" in sef_modu: ozel_istek = "Act as a Sports Coach. High protein recipes."
-                    else: ozel_istek = "Act as a Chef. Delicious recipes."
-                    final_prompt = [f"{ana_komut} {ozel_istek} {besin_komutu}", image]
-                    cevap = model.generate_content(final_prompt)
-                    st.success(result_txt)
+                    prompt = f"Analyze fridge photo. Language: {secilen_dil}. User Goal: {sef_modu}. Output: Recipes + Macro Nutrients (Calories, Protein, Carb, Fat) in a colored box."
+                    cevap = model.generate_content([prompt, image])
+                    st.success(chef_txt["res"])
                     st.markdown(cevap.text, unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-# --- SAYFA 2: KALORİ TAKİBİ ---
-elif secilen_sayfa == sayfa_isimleri[1]:
-    st.title(tracker_title)
+# ==========================================================
+# SAYFA 3: KALORİ TAKİBİ (AKILLI HESAPLAMA)
+# ==========================================================
+elif secilen_sayfa == nav_options[2]:
+    st.title(track_txt["title"])
     
     veri_tabani = verileri_yukle()
     tarih_str = str(st.date_input("📅", date.today()))
     if tarih_str not in veri_tabani: veri_tabani[tarih_str] = {"1": [], "2": [], "3": [], "4": []}
     gunluk_veri = veri_tabani[tarih_str]
-
-    st.subheader(add_meal_title)
     
-    if 'kalori_degeri' not in st.session_state: st.session_state['kalori_degeri'] = 0
-    if 'protein_degeri' not in st.session_state: st.session_state['protein_degeri'] = 0
-    if 'karbon_degeri' not in st.session_state: st.session_state['karbon_degeri'] = 0
-    if 'yag_degeri' not in st.session_state: st.session_state['yag_degeri'] = 0
-
-    col1, col2 = st.columns([1, 1])
-
+    st.subheader(track_txt["add"])
+    
+    # Session State (Hafıza)
+    if 'cal' not in st.session_state: st.session_state['cal'] = 0
+    if 'pro' not in st.session_state: st.session_state['pro'] = 0
+    if 'carb' not in st.session_state: st.session_state['carb'] = 0
+    if 'fat' not in st.session_state: st.session_state['fat'] = 0
+    
+    col1, col2 = st.columns([1,1])
+    
     with col1:
-        # ÖĞÜN SEÇİMİ (İsimler dile göre değişiyor)
-        secilen_ogun_isim = st.selectbox(meals[0] if secilen_dil=="English" else "Select", meals)
-        ogun_kodu = str(meals.index(secilen_ogun_isim) + 1)
+        ogun = st.selectbox(track_txt["meal"], meals)
+        ogun_id = str(meals.index(ogun) + 1)
         
-        # YEMEK LİSTESİ (Dile Göre Yükleniyor)
-        # Eğer listede olmayan bir şey gelirse, varsayılan olarak Türkçe listeyi gösterelim.
+        # Dile göre yemek listesi
         aktif_liste = YEMEK_SOZLUGU.get(secilen_dil, YEMEK_SOZLUGU["Türkçe"])
+        yemek = st.selectbox(track_txt["food"], aktif_liste)
+        miktar = st.number_input(track_txt["portion"], 0.5, 10.0, 1.0, 0.5)
         
-        c1, c2 = st.columns([2, 1])
-        with c1:
-            secilen_yemek = st.selectbox("Food / Yemek", aktif_liste)
-        with c2:
-            miktar = st.number_input(portion_label, min_value=0.5, step=0.5, value=1.0)
-        
-        if st.button(f"{ai_btn}"):
+        if st.button(track_txt["calc_ai"]):
             with st.spinner("..."):
                 try:
-                    prompt = f"Estimate Calories, Protein, Carb, Fat for {miktar} portion of '{secilen_yemek}'. Return ONLY numbers separated by comma (e.g. 350,20,40,15)."
-                    ai_cevap = model.generate_content(prompt).text.strip()
-                    degerler = ai_cevap.split(',')
-                    st.session_state['kalori_degeri'] = int(float(degerler[0]))
-                    st.session_state['protein_degeri'] = int(float(degerler[1]))
-                    st.session_state['karbon_degeri'] = int(float(degerler[2]))
-                    st.session_state['yag_degeri'] = int(float(degerler[3]))
+                    prm = f"Calculate macros for {miktar} portion of '{yemek}'. Output ONLY numbers: Calorie,Protein,Carb,Fat (e.g. 500,30,40,20)."
+                    res = model.generate_content(prm).text.strip().split(',')
+                    st.session_state['cal'] = int(float(res[0]))
+                    st.session_state['pro'] = int(float(res[1]))
+                    st.session_state['carb'] = int(float(res[2]))
+                    st.session_state['fat'] = int(float(res[3]))
                     st.success("OK!")
-                except:
-                    st.error("Error")
-
+                except: st.error("AI Error")
+                
     with col2:
-        kalori = st.number_input(labels[0], value=st.session_state['kalori_degeri'], step=10)
-        protein = st.number_input(labels[1], value=st.session_state['protein_degeri'], step=1)
-        karbon = st.number_input(labels[2], value=st.session_state['karbon_degeri'], step=1)
-        yag = st.number_input(labels[3], value=st.session_state['yag_degeri'], step=1)
-
-    if st.button(add_btn_txt, type="primary"):
-        kayit_adi = f"{miktar}x {secilen_yemek}"
-        yeni_kayit = {"yemek": kayit_adi, "kalori": kalori, "protein": protein, "karbon": karbon, "yag": yag}
-        gunluk_veri[ogun_kodu].append(yeni_kayit)
+        cal = st.number_input("Kcal", value=st.session_state['cal'])
+        pro = st.number_input("Protein (g)", value=st.session_state['pro'])
+        carb = st.number_input("Carb (g)", value=st.session_state['carb'])
+        fat = st.number_input("Fat (g)", value=st.session_state['fat'])
+        
+    if st.button(track_txt["save"], type="primary"):
+        gunluk_veri[ogun_id].append({"yemek": f"{miktar}x {yemek}", "kalori": cal, "protein": pro, "karbon": carb, "yag": fat})
         veri_tabani[tarih_str] = gunluk_veri
         veriyi_kaydet(veri_tabani)
-        st.session_state['kalori_degeri'] = 0
-        st.success("✅")
+        st.session_state['cal'] = 0
         st.rerun()
 
     st.divider()
-    st.subheader(summary_txt)
+    st.subheader(track_txt["sum"])
     
-    toplam_kalori = sum(item['kalori'] for k in gunluk_veri for item in gunluk_veri[k])
-    toplam_protein = sum(item['protein'] for k in gunluk_veri for item in gunluk_veri[k])
+    top_cal = sum(x['kalori'] for k in gunluk_veri for x in gunluk_veri[k])
+    top_pro = sum(x['protein'] for k in gunluk_veri for x in gunluk_veri[k])
     
     k1, k2 = st.columns(2)
-    k1.metric("🔥 Kcal", toplam_kalori)
-    k2.metric("🥩 Protein", f"{toplam_protein}g")
+    k1.metric("🔥 Kcal", top_cal)
+    k2.metric("🥩 Protein", f"{top_pro}g")
     
-    for i, ogun_ismi in enumerate(meals):
-        kod = str(i + 1)
-        if len(gunluk_veri[kod]) > 0:
-            st.markdown(f"**{ogun_ismi}**")
-            for yemek in gunluk_veri[kod]:
-                st.text(f"- {yemek['yemek']}: {yemek['kalori']} kcal")
-            st.divider()
-            
-    if st.button(reset_btn):
+    for i, m in enumerate(meals):
+        kod = str(i+1)
+        if gunluk_veri[kod]:
+            st.markdown(f"**{m}**")
+            for y in gunluk_veri[kod]:
+                st.text(f"- {y['yemek']}: {y['kalori']} kcal")
+                
+    if st.button(track_txt["reset"]):
         del veri_tabani[tarih_str]
         veriyi_kaydet(veri_tabani)
         st.rerun()
